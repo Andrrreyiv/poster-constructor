@@ -1,0 +1,245 @@
+{
+  "_note": "ЗАГЛУШКИ 13.09.2026. Клиент прислал только тематики голосом, файлов принтов НЕТ. 10 категорий по его словам («10 категорий нормально»), по 3 картинки в каждой. Заменяется настоящей библиотекой без правки кода.",
+  "categories": [
+    {
+      "slug": "messi",
+      "label": "Месси",
+      "items": [
+        {
+          "id": "messi-1",
+          "file": "assets/prints/messi/1.svg",
+          "origW": 1200,
+          "origH": 1600
+        },
+        {
+          "id": "messi-2",
+          "file": "assets/prints/messi/2.svg",
+          "origW": 1200,
+          "origH": 1600
+        },
+        {
+          "id": "messi-3",
+          "file": "assets/prints/messi/3.svg",
+          "origW": 1200,
+          "origH": 1600
+        }
+      ]
+    },
+    {
+      "slug": "ronaldo",
+      "label": "Роналду",
+      "items": [
+        {
+          "id": "ronaldo-1",
+          "file": "assets/prints/ronaldo/1.svg",
+          "origW": 1200,
+          "origH": 1600
+        },
+        {
+          "id": "ronaldo-2",
+          "file": "assets/prints/ronaldo/2.svg",
+          "origW": 1200,
+          "origH": 1600
+        },
+        {
+          "id": "ronaldo-3",
+          "file": "assets/prints/ronaldo/3.svg",
+          "origW": 1200,
+          "origH": 1600
+        }
+      ]
+    },
+    {
+      "slug": "neymar",
+      "label": "Неймар",
+      "items": [
+        {
+          "id": "neymar-1",
+          "file": "assets/prints/neymar/1.svg",
+          "origW": 1200,
+          "origH": 1600
+        },
+        {
+          "id": "neymar-2",
+          "file": "assets/prints/neymar/2.svg",
+          "origW": 1200,
+          "origH": 1600
+        },
+        {
+          "id": "neymar-3",
+          "file": "assets/prints/neymar/3.svg",
+          "origW": 1200,
+          "origH": 1600
+        }
+      ]
+    },
+    {
+      "slug": "mbappe",
+      "label": "Мбаппе",
+      "items": [
+        {
+          "id": "mbappe-1",
+          "file": "assets/prints/mbappe/1.svg",
+          "origW": 1200,
+          "origH": 1600
+        },
+        {
+          "id": "mbappe-2",
+          "file": "assets/prints/mbappe/2.svg",
+          "origW": 1200,
+          "origH": 1600
+        },
+        {
+          "id": "mbappe-3",
+          "file": "assets/prints/mbappe/3.svg",
+          "origW": 1200,
+          "origH": 1600
+        }
+      ]
+    },
+    {
+      "slug": "haaland",
+      "label": "Холанд",
+      "items": [
+        {
+          "id": "haaland-1",
+          "file": "assets/prints/haaland/1.svg",
+          "origW": 1200,
+          "origH": 1600
+        },
+        {
+          "id": "haaland-2",
+          "file": "assets/prints/haaland/2.svg",
+          "origW": 1200,
+          "origH": 1600
+        },
+        {
+          "id": "haaland-3",
+          "file": "assets/prints/haaland/3.svg",
+          "origW": 1200,
+          "origH": 1600
+        }
+      ]
+    },
+    {
+      "slug": "bellingham",
+      "label": "Беллингем",
+      "items": [
+        {
+          "id": "bellingham-1",
+          "file": "assets/prints/bellingham/1.svg",
+          "origW": 1200,
+          "origH": 1600
+        },
+        {
+          "id": "bellingham-2",
+          "file": "assets/prints/bellingham/2.svg",
+          "origW": 1200,
+          "origH": 1600
+        },
+        {
+          "id": "bellingham-3",
+          "file": "assets/prints/bellingham/3.svg",
+          "origW": 1200,
+          "origH": 1600
+        }
+      ]
+    },
+    {
+      "slug": "clubs",
+      "label": "Клубы",
+      "items": [
+        {
+          "id": "clubs-1",
+          "file": "assets/prints/clubs/1.svg",
+          "origW": 1200,
+          "origH": 1600
+        },
+        {
+          "id": "clubs-2",
+          "file": "assets/prints/clubs/2.svg",
+          "origW": 1200,
+          "origH": 1600
+        },
+        {
+          "id": "clubs-3",
+          "file": "assets/prints/clubs/3.svg",
+          "origW": 1200,
+          "origH": 1600
+        }
+      ]
+    },
+    {
+      "slug": "legends",
+      "label": "Легенды",
+      "items": [
+        {
+          "id": "legends-1",
+          "file": "assets/prints/legends/1.svg",
+          "origW": 1200,
+          "origH": 1600
+        },
+        {
+          "id": "legends-2",
+          "file": "assets/prints/legends/2.svg",
+          "origW": 1200,
+          "origH": 1600
+        },
+        {
+          "id": "legends-3",
+          "file": "assets/prints/legends/3.svg",
+          "origW": 1200,
+          "origH": 1600
+        }
+      ]
+    },
+    {
+      "slug": "cups",
+      "label": "Кубки",
+      "items": [
+        {
+          "id": "cups-1",
+          "file": "assets/prints/cups/1.svg",
+          "origW": 1200,
+          "origH": 1600
+        },
+        {
+          "id": "cups-2",
+          "file": "assets/prints/cups/2.svg",
+          "origW": 1200,
+          "origH": 1600
+        },
+        {
+          "id": "cups-3",
+          "file": "assets/prints/cups/3.svg",
+          "origW": 1200,
+          "origH": 1600
+        }
+      ]
+    },
+    {
+      "slug": "abstract",
+      "label": "Абстракция",
+      "items": [
+        {
+          "id": "abstract-1",
+          "file": "assets/prints/abstract/1.svg",
+          "origW": 1200,
+          "origH": 1600
+        },
+        {
+          "id": "abstract-2",
+          "file": "assets/prints/abstract/2.svg",
+          "origW": 1200,
+          "origH": 1600
+        },
+        {
+          "id": "abstract-3",
+          "file": "assets/prints/abstract/3.svg",
+          "origW": 1200,
+          "origH": 1600
+        }
+      ]
+    }
+  ]
+}

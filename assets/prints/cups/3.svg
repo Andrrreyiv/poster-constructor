@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1600" viewBox="0 0 1200 1600">
+<rect width="1200" height="1600" fill="#d8d07b"/>
+<circle cx="600" cy="680" r="210" fill="#57500c" opacity="0.35"/>
+<rect x="120" y="1110" width="960" height="14" fill="#57500c"/>
+<text x="600" y="1060" font-family="Arial, sans-serif" font-size="120" font-weight="bold" fill="#57500c" text-anchor="middle">Кубки</text>
+<text x="600" y="1220" font-family="Arial, sans-serif" font-size="64" fill="#57500c" text-anchor="middle" opacity="0.75">вариант 3</text>
+<text x="600" y="1480" font-family="Arial, sans-serif" font-size="44" fill="#57500c" text-anchor="middle" opacity="0.55">ЗАГЛУШКА · ждём принты клиента</text>
+</svg>

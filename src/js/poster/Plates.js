@@ -1,0 +1,66 @@
+// Plates — список металлических пластин и их размеры.
+//
+// Клиент 13.09 (голосовое 10:27): «размеры пластин разные надо сделать… давайте 6 вариаций
+// размеров любых… цену тоже импровизированную сделать, там самый маленький допустим 300,
+// потом следующий 500, 700, тысяча, полторы тысячи… любую градацию выберите, а мы потом
+// её подстроим». Отсюда всё, что здесь есть, — плоский список из конфига, без вычислений
+// по площади: размер у постера не произвольный, а КЛЮЧ списка, и цена лежит рядом с ним.
+//
+// ⚠️ Ступенчатая min-containing из футболок (StepPrice) здесь не нужна и не переносится:
+// там покупатель тянул рамку принта на произвольный размер и цену искали по ближайшему
+// вмещающему тарифу. Тут выбор из шести кнопок.
+
+/** Пластины из конфига с готовой подписью. Порядок конфига сохраняется. */
+export function plateList(config) {
+  const items = config?.plates?.items ?? [];
+  return items.map((p) => ({ ...p, label: plateLabel(p) }));
+}
+
+/** «30 × 40 см» — подпись кнопки. Размер всегда пишем в порядке ширина × высота. */
+export function plateLabel(plate) {
+  if (!plate) return '';
+  return plate.wCm + ' × ' + plate.hCm + ' см';
+}
+
+/** Пластина по id. Неизвестный id даёт null, вызывающий откатывается на первую. */
+export function plateById(config, id) {
+  return plateList(config).find((p) => p.id === id) ?? null;
+}
+
+/** Первая пластина списка — состояние по умолчанию при старте. */
+export function defaultPlate(config) {
+  return plateList(config)[0] ?? null;
+}
+
+/**
+ * Физический размер с учётом ориентации.
+ *
+ * ⚠️ Ориентация — НАША добавка, клиент о ней не говорил (см. _note в конфиге).
+ * Пластина 10×15 физически существует и книжной, и альбомной; без переключателя
+ * альбомная фотография на книжной пластине обрезается по бокам, и в демонстрации
+ * это читается как поломка, а не как задумка. На цену не влияет — это тот же кусок
+ * металла, повёрнутый на бок.
+ */
+export function plateSize(plate, orientation = 'portrait') {
+  if (!plate) return null;
+  const landscape = orientation === 'landscape';
+  return {
+    wCm: landscape ? plate.hCm : plate.wCm,
+    hCm: landscape ? plate.wCm : plate.hCm,
+  };
+}
+
+/** Отношение сторон с учётом ориентации — им живёт и превью, и экспорт. */
+export function plateAspect(plate, orientation = 'portrait') {
+  const size = plateSize(plate, orientation);
+  return size ? size.wCm / size.hCm : 1;
+}
+
+/** Включён ли переключатель ориентации. Выключается одним ключом конфига. */
+export function orientationEnabled(config) {
+  return config?.orientation?.enabled !== false;
+}
+
+export function defaultOrientation(config) {
+  return config?.orientation?.default === 'landscape' ? 'landscape' : 'portrait';
+}

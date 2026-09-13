@@ -1,0 +1,10 @@
+{
+  "name": "poster-constructor",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Конструктор постеров на металле для jetronsport.ru. Vanilla JS + ESM, сборки нет и заводить не надо — как у двух предыдущих конструкторов этого заказчика.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  }
+}

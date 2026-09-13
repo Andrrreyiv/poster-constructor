@@ -1,0 +1,432 @@
+// PosterApp — оркестратор конструктора постеров.
+//
+// Писался с нуля, образцом приёмов служил TshirtApp.js (аккордеон одной панели, единая
+// точка updatePrice, пересборка панели на каждом действии). Он заметно короче: у постера
+// нет сторон, цветов изделия, шрифтов, слоёв, таблицы размеров и фото-мокапов.
+//
+// Состав экрана ровно по пяти требованиям клиента из голосового 13.09 09:47 и уточнениям
+// из голосового 10:27. Ничего сверх них здесь нет, кроме переключателя ориентации —
+// он помечен в конфиге как наша добавка и выключается одним флагом.
+
+import { PanelAccordion } from './PanelAccordion.js?v=20260913c';
+import { LibraryPanel } from '../poster/LibraryPanel.js?v=20260913c';
+import {
+  plateList, plateById, defaultPlate, plateSize,
+  orientationEnabled, defaultOrientation,
+} from '../poster/Plates.js?v=20260913c';
+import { frameList, frameGeometry } from '../poster/FrameOption.js?v=20260913c';
+import { assessResolution } from '../poster/Resolution.js?v=20260913c';
+import { priceOf } from '../poster/PosterPrice.js?v=20260913c';
+import { buildOrderSpec, specLines } from '../poster/OrderSpec.js?v=20260913c';
+import { drawPoster, composePoster, mockupFileName } from '../poster/PosterCanvas.js?v=20260913c';
+
+export class PosterApp {
+  constructor({ config, stageEl, panelEl, manifest = null }) {
+    this.config = config;
+    this.stageEl = stageEl;
+    this.panelEl = panelEl;
+
+    const first = defaultPlate(config);
+    this.state = {
+      plateId: first?.id ?? null,
+      orientation: defaultOrientation(config),
+      frameId: null,          // null = без рамы, законное состояние по умолчанию
+      image: null,            // { src, w, h, origin: 'library' | 'upload' }
+    };
+
+    this.panels = new PanelAccordion();
+    this.panelRefs = {};
+    this.library = new LibraryPanel(config, manifest);
+    this._img = null;         // загруженный HTMLImageElement для отрисовки
+    this._lastTotal = null;
+  }
+
+  start() {
+    this._wireAccordion();
+    this.render();
+  }
+
+  // ── Аккордеон ──────────────────────────────────────────────────────────────
+  // Приём перенесён из TshirtApp дословно вместе с двумя предупреждениями.
+
+  _registerPanel(name, root, apply) {
+    this.panelRefs[name] = { root, apply };
+    apply(this.panels.isOpen(name));
+  }
+
+  /**
+   * ⚠️ Фаза ПЕРЕХВАТА, а не всплытия: обработчик самой кнопки обязан сработать ПОСЛЕ нас,
+   * иначе клик по чужой кнопке открыл бы её поле, а мы бы тут же его закрыли.
+   * ⚠️ Подписка вешается ОДИН раз в start(), а не в renderPanel(): панель пересобирается
+   * на каждом действии, и подписки оттуда копились бы десятками.
+   */
+  _wireAccordion(doc = (typeof document === 'undefined' ? null : document)) {
+    if (!doc) return;
+    doc.addEventListener('click', (e) => {
+      const ref = this.panelRefs[this.panels.open];
+      const inside = !!(ref && ref.root && ref.root.contains(e.target));
+      if (this.panels.closeIfOutside(inside)) this._syncPanels();
+    }, true);
+  }
+
+  _syncPanels() {
+    for (const name of Object.keys(this.panelRefs)) {
+      this.panelRefs[name].apply(this.panels.isOpen(name));
+    }
+  }
+
+  // ── Состояние ──────────────────────────────────────────────────────────────
+
+  currentPlate() {
+    return plateById(this.config, this.state.plateId);
+  }
+
+  currentSize() {
+    return plateSize(this.currentPlate(), this.state.orientation);
+  }
+
+  /** Оценка качества под текущую пластину. Пересчитывается при смене чего угодно. */
+  currentQuality() {
+    const size = this.currentSize();
+    if (!this.state.image || !size) return { level: 'ok', dpi: 0, message: null };
+    return assessResolution(
+      { w: this.state.image.w, h: this.state.image.h }, size, this.config,
+    );
+  }
+
+  currentSpec() {
+    return buildOrderSpec(this.config, this.state);
+  }
+
+  /**
+   * Положить картинку. Размеры берём у самого браузера после загрузки: у файла
+   * покупателя их взять больше неоткуда, а именно от них зависит проверка качества.
+   */
+  setImage(src, origin) {
+    const im = new Image();
+    im.onload = () => {
+      this._img = im;
+      this.state.image = { src, w: im.naturalWidth, h: im.naturalHeight, origin };
+      this.render();
+    };
+    im.onerror = () => {
+      this._img = null;
+      this.state.image = null;
+      this.render();
+    };
+    im.src = src;
+  }
+
+  // ── Отрисовка ──────────────────────────────────────────────────────────────
+
+  render() {
+    this.renderStage();
+    this.renderPanel();
+    this.updatePrice();
+    this._syncPanels();
+  }
+
+  /** Сцена: изделие целиком, в пропорциях пластины, с рамой если выбрана. */
+  renderStage() {
+    const size = this.currentSize();
+    this.stageEl.innerHTML = '';
+    if (!size) return;
+
+    const shell = el('div', 'stage__shell');
+    const canvas = document.createElement('canvas');
+    canvas.className = 'stage__canvas';
+
+    // Размер холста берём в экранных пикселях так, чтобы длинная сторона была
+    // постоянной: пластины отличаются в шесть раз, и без этого 10×15 выглядела бы
+    // маркой, а 40×60 не влезала бы в экран.
+    const LONG = 560;
+    const aspect = size.wCm / size.hCm;
+    const plateW = aspect >= 1 ? LONG : Math.round(LONG * aspect);
+    const plateH = aspect >= 1 ? Math.round(LONG / aspect) : LONG;
+    const geo = frameGeometry(plateW, plateH, this.config, this.state.frameId);
+
+    canvas.width = geo.outerW;
+    canvas.height = geo.outerH;
+    const ctx = canvas.getContext('2d');
+    drawPoster(ctx, this._img, geo);
+
+    shell.append(canvas);
+    this.stageEl.append(shell);
+
+    const caption = el('div', 'stage__caption');
+    caption.append(el('span', 'stage__size', size.wCm + ' × ' + size.hCm + ' см'));
+    if (!this.state.image) {
+      caption.append(el('span', 'stage__hint', 'Выберите картинку — она ляжет на пластину целиком'));
+    }
+    this.stageEl.append(caption);
+  }
+
+  renderPanel() {
+    this.panelEl.innerHTML = '';
+    this.panelRefs = {};
+
+    this.panelEl.append(this.plateField());
+    if (orientationEnabled(this.config)) this.panelEl.append(this.orientationField());
+    this.panelEl.append(this.imageField());
+    const warn = this.qualityField();
+    if (warn) this.panelEl.append(warn);
+    if (frameList(this.config).length) this.panelEl.append(this.frameField());
+    this.panelEl.append(this.totalField());
+    this.panelEl.append(this.actionsField());
+  }
+
+  /** Размер пластины — шесть кнопок с ценой под подписью. */
+  plateField() {
+    const sec = section('Размер пластины');
+    const grid = el('div', 'plates');
+    for (const plate of plateList(this.config)) {
+      const btn = el('button', 'plate' + (plate.id === this.state.plateId ? ' plate--on' : ''));
+      btn.type = 'button';
+      btn.append(el('span', 'plate__size', plate.label));
+      btn.append(el('span', 'plate__price', plate.price + ' ₽'));
+      btn.addEventListener('click', () => {
+        this.state.plateId = plate.id;
+        this.render();
+      });
+      grid.append(btn);
+    }
+    sec.append(grid);
+    return sec;
+  }
+
+  /** Ориентация. Наша добавка — см. комментарий в Plates.plateSize. */
+  orientationField() {
+    const sec = section('Как повернуть');
+    sec.append(this.segment(
+      [{ id: 'portrait', label: 'Книжная' }, { id: 'landscape', label: 'Альбомная' }],
+      this.state.orientation,
+      (id) => { this.state.orientation = id; this.render(); },
+    ));
+    return sec;
+  }
+
+  /** Картинка: кнопка библиотеки и загрузка своего файла (обе — внутри окна). */
+  imageField() {
+    const sec = section('Картинка');
+    const holder = el('div', '');
+    this.library.renderTrigger(holder, {
+      thumbSrc: this.state.image?.src ?? null,
+      onOpen: () => this.library.openModal({
+        onPick: (item) => this.setImage(item.file, 'library'),
+        onUpload: (file) => this.uploadImage(file),
+      }),
+    });
+    sec.append(holder);
+    return sec;
+  }
+
+  /**
+   * Предупреждение о качестве. Клиент 13.09: «сразу надо показывать… выскакивает
+   * сообщение, что низкое качество». Показываем прямо в панели, рядом с картинкой,
+   * а не всплывающим окном: всплывающее закрывают не читая.
+   */
+  qualityField() {
+    const q = this.currentQuality();
+    if (!q.message) return null;
+    const box = el('div', 'quality quality--' + q.level);
+    box.append(el('span', 'quality__icon', q.level === 'bad' ? '!' : '?'));
+    box.append(el('span', 'quality__text', q.message));
+    return box;
+  }
+
+  /** Рама: «без рамы» плюс три вида из конфига. */
+  frameField() {
+    const sec = section('Рама');
+    const options = [
+      { id: null, label: 'Без рамы' },
+      ...frameList(this.config).map((f) => ({ id: f.id, label: f.label, price: f.price })),
+    ];
+    const grid = el('div', 'frames');
+    for (const opt of options) {
+      const on = (opt.id ?? null) === (this.state.frameId ?? null);
+      const btn = el('button', 'frameopt' + (on ? ' frameopt--on' : ''));
+      btn.type = 'button';
+      const chip = el('span', 'frameopt__chip');
+      const found = frameList(this.config).find((f) => f.id === opt.id);
+      chip.style.background = found ? (found.face || '#888') : 'transparent';
+      if (!found) chip.classList.add('frameopt__chip--none');
+      btn.append(chip);
+      btn.append(el('span', 'frameopt__label', opt.label));
+      if (opt.price) btn.append(el('span', 'frameopt__price', '+' + opt.price + ' ₽'));
+      btn.addEventListener('click', () => {
+        this.state.frameId = opt.id;
+        this.render();
+      });
+      grid.append(btn);
+    }
+    sec.append(grid);
+    return sec;
+  }
+
+  /** Итог с раскрывающейся детализацией — поле аккордеона. */
+  totalField() {
+    const sec = section(null);
+    sec.className = 'total';
+    const head = el('button', 'total__head');
+    head.type = 'button';
+    head.append(el('span', 'total__label', 'Итого'));
+    const value = el('span', 'total__value');
+    value.id = 'totalPrice';
+    head.append(value);
+    head.append(el('span', 'total__caret', '▾'));
+
+    const body = el('div', 'total__body');
+    for (const line of priceOf(this.config, this.state).lines) {
+      const row = el('div', 'total__row');
+      row.append(el('span', '', line.label), el('span', '', line.amount + ' ₽'));
+      body.append(row);
+    }
+
+    head.addEventListener('click', () => {
+      this.panels.toggle('details');
+      this._syncPanels();
+    });
+    sec.append(head, body);
+    this._registerPanel('details', sec, (open) => {
+      body.style.display = open ? 'block' : 'none';
+      head.classList.toggle('total__head--open', open);
+    });
+    return sec;
+  }
+
+  actionsField() {
+    const box = el('div', 'actions');
+    const spec = this.currentSpec();
+
+    const order = el('button', 'btn btn--primary', 'Заказать');
+    order.type = 'button';
+    order.disabled = !spec.ready;
+    order.addEventListener('click', () => this.showOrder());
+
+    const dl = el('button', 'btn btn--ghost', 'Скачать макет');
+    dl.type = 'button';
+    dl.disabled = !spec.ready;
+    dl.addEventListener('click', () => this.downloadMockup());
+
+    box.append(order, dl);
+    if (!spec.ready) {
+      box.append(el('p', 'actions__hint', 'Выберите картинку, чтобы оформить заказ.'));
+    }
+    return box;
+  }
+
+  // ── Действия ───────────────────────────────────────────────────────────────
+
+  /**
+   * Свой файл покупателя. Читаем в data:URL, а не по object URL: холст экспорта
+   * иначе оказался бы «запятнан» и toDataURL бросил бы SecurityError при скачивании.
+   */
+  uploadImage(file) {
+    const maxMB = Number(this.config.upload?.maxUploadMB) || 20;
+    if (file.size > maxMB * 1024 * 1024) {
+      alert('Файл больше ' + maxMB + ' МБ. Выберите файл полегче.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => this.setImage(String(reader.result), 'upload');
+    reader.readAsDataURL(file);
+  }
+
+  downloadMockup() {
+    const canvas = composePoster(this.config, this.state, this._img);
+    if (!canvas) return;
+    const a = document.createElement('a');
+    a.download = mockupFileName(this.currentSpec());
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+  }
+
+  /**
+   * Состав заказа.
+   *
+   * ⚠️ ЭТАП 1: заказ никуда не уходит — прототип стоит на GitHub Pages, кассы там нет.
+   * Клиент 13.09 просил корзину («сразу заявку в корзину и заказ»), она делается
+   * на этапе 2 отдельным mu-plugin. Здесь окно показывает ровно то, что уйдёт в заказ,
+   * чтобы состав можно было утвердить до выкладки.
+   */
+  showOrder() {
+    const spec = this.currentSpec();
+    if (!spec.ready) return;
+
+    const overlay = el('div', 'ordm');
+    const card = el('div', 'ordm__card');
+    card.setAttribute('role', 'dialog');
+    card.setAttribute('aria-modal', 'true');
+
+    const head = el('div', 'ordm__head');
+    head.append(el('h3', 'ordm__title', 'Ваш постер'));
+    const close = el('button', 'ordm__close', '×');
+    close.type = 'button';
+    head.append(close);
+    card.append(head);
+
+    const list = el('div', 'ordm__list');
+    for (const [label, value] of specLines(spec)) {
+      const row = el('div', 'ordm__row');
+      row.append(el('span', 'ordm__row-label', label), el('span', 'ordm__row-value', value));
+      list.append(row);
+    }
+    const totalRow = el('div', 'ordm__row ordm__row--total');
+    totalRow.append(el('span', '', 'Итого'), el('span', '', spec.price.total + ' ₽'));
+    list.append(totalRow);
+    card.append(list);
+
+    if (spec.quality.level !== 'ok') {
+      card.append(el('p', 'ordm__warn', this.currentQuality().message));
+    }
+
+    card.append(el('p', 'ordm__note',
+      'Это прототип: заказ пока никуда не отправляется. Приём заказа и корзина — следующий этап.'));
+
+    close.addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+    overlay.append(card);
+    document.body.append(overlay);
+  }
+
+  /** Единственная точка правды по сумме. Микро-удар цены — как у футболок. */
+  updatePrice() {
+    const out = document.getElementById('totalPrice');
+    if (!out) return;
+    const total = priceOf(this.config, this.state).total;
+    out.textContent = total > 0 ? total + ' ₽' : '—';
+    if (this._lastTotal != null && this._lastTotal !== total) {
+      out.classList.remove('bump');
+      void out.offsetWidth;
+      out.classList.add('bump');
+    }
+    this._lastTotal = total;
+  }
+
+  /** Ряд кнопок-переключателей. Один выбран всегда. */
+  segment(options, active, onPick) {
+    const row = el('div', 'seg');
+    for (const opt of options) {
+      const btn = el('button', 'seg__btn' + (opt.id === active ? ' seg__btn--on' : ''), opt.label);
+      btn.type = 'button';
+      btn.addEventListener('click', () => onPick(opt.id));
+      row.append(btn);
+    }
+    return row;
+  }
+}
+
+// ── Хелперы DOM ──────────────────────────────────────────────────────────────
+function el(tag, cls, text) {
+  const node = document.createElement(tag);
+  if (cls) node.className = cls;
+  if (text != null) node.textContent = text;
+  return node;
+}
+
+function section(title) {
+  const sec = document.createElement('section');
+  sec.className = 'field';
+  if (title) sec.append(el('h3', 'field__title', title));
+  return sec;
+}

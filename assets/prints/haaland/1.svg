@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1600" viewBox="0 0 1200 1600">
+<rect width="1200" height="1600" fill="#a9b6c9"/>
+<circle cx="600" cy="600" r="270" fill="#22303f" opacity="0.35"/>
+<rect x="120" y="1070" width="960" height="14" fill="#22303f"/>
+<text x="600" y="1020" font-family="Arial, sans-serif" font-size="120" font-weight="bold" fill="#22303f" text-anchor="middle">Холанд</text>
+<text x="600" y="1180" font-family="Arial, sans-serif" font-size="64" fill="#22303f" text-anchor="middle" opacity="0.75">вариант 1</text>
+<text x="600" y="1480" font-family="Arial, sans-serif" font-size="44" fill="#22303f" text-anchor="middle" opacity="0.55">ЗАГЛУШКА · ждём принты клиента</text>
+</svg>
