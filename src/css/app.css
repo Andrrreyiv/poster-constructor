@@ -455,3 +455,21 @@ body {
   .libp__nav--prev { left: 2px; }
   .libp__nav--next { right: 2px; }
 }
+
+/* Количество и кнопки в окне заказа. Появились вместе с приёмом заказа:
+   клиент 13.09 просил корзину, а не просто показ состава. */
+.ordm__qty {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin: 14px 22px 0; font-size: 14px;
+}
+.ordm__qty-input {
+  width: 86px; padding: 8px 10px;
+  border: 1.5px solid var(--line-strong); border-radius: var(--r-sm);
+  font: inherit; text-align: center;
+}
+.ordm__err {
+  margin: 12px 22px 0; padding: 10px 12px; border-radius: var(--r-sm);
+  background: var(--danger-soft); color: #8d1523; font-size: 13px;
+}
+.ordm__foot { display: flex; gap: 8px; margin: 16px 22px 0; }
+.ordm__foot .btn { flex: 1; padding: 12px 16px; font-size: 14px; }

@@ -33,11 +33,9 @@ export function frameById(config, id) {
   return frameList(config).find((f) => f.id === id) ?? null;
 }
 
-/** Доплата за раму. Без рамы — ноль. Неизвестный id тоже ноль, а не NaN в итоге. */
-export function framePrice(config, id) {
-  const f = frameById(config, id);
-  return f ? Number(f.price) || 0 : 0;
-}
+// ⛔ Здесь был framePrice(config, id). Удалён 13.09 как ДУБЛЬ: его тело построчно
+// совпадало с frameAmount() из PosterPrice.js, и вызывался только второй. Цена живёт
+// в модуле цены, а этот модуль отвечает за саму раму — её вид, геометрию и текстуру.
 
 /**
  * Адрес накладной картинки рамы. Его нет — рама рисуется запасной заливкой,

@@ -50,11 +50,9 @@ export function plateSize(plate, orientation = 'portrait') {
   };
 }
 
-/** Отношение сторон с учётом ориентации — им живёт и превью, и экспорт. */
-export function plateAspect(plate, orientation = 'portrait') {
-  const size = plateSize(plate, orientation);
-  return size ? size.wCm / size.hCm : 1;
-}
+// ⛔ Здесь был plateAspect(). Удалён 13.09 как невызываемый: и превью, и экспорт
+// считают пропорцию сами из plateSize(), а отдельная обёртка вокруг одного деления
+// только создавала вид, что у неё есть потребители.
 
 /** Включён ли переключатель ориентации. Выключается одним ключом конфига. */
 export function orientationEnabled(config) {

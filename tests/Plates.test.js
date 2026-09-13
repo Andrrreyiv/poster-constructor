@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   plateList, plateLabel, plateById, defaultPlate,
-  plateSize, plateAspect, orientationEnabled, defaultOrientation,
+  plateSize, orientationEnabled, defaultOrientation,
 } from '../src/js/poster/Plates.js';
 import { makeConfig } from './fixture.js';
 
@@ -47,11 +47,6 @@ test('альбомная ориентация меняет стороны мес
 test('ориентация по умолчанию — книжная, мусор тоже даёт книжную', () => {
   assert.deepEqual(plateSize({ wCm: 30, hCm: 40 }), { wCm: 30, hCm: 40 });
   assert.deepEqual(plateSize({ wCm: 30, hCm: 40 }, 'ерунда'), { wCm: 30, hCm: 40 });
-});
-
-test('пропорция считается с учётом поворота', () => {
-  assert.equal(plateAspect({ wCm: 30, hCm: 40 }, 'portrait'), 0.75);
-  assert.equal(plateAspect({ wCm: 30, hCm: 40 }, 'landscape'), 40 / 30);
 });
 
 // Клиент об ориентации не просил — флаг обязан её гасить целиком.

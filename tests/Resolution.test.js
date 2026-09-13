@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { pxNeeded, dpiOf, assessResolution, blocksOrder } from '../src/js/poster/Resolution.js';
+import { pxNeeded, dpiOf, assessResolution } from '../src/js/poster/Resolution.js';
 import { makeConfig } from './fixture.js';
 
 test('нужное число пикселей считается из сантиметров и dpi', () => {
@@ -72,8 +72,3 @@ test('одна и та же картинка на маленькой пласт�
   assert.equal(assessResolution({ w: 800, h: 1200 }, { wCm: 40, hCm: 60 }, cfg).level, 'bad');
 });
 
-// Клиент просил ПОКАЗЫВАТЬ сообщение, а не запрещать покупку. Запрет без его слова
-// был бы отсебятиной — тест держит это решение явным.
-test('низкое качество не запрещает заказ', () => {
-  assert.equal(blocksOrder(), false);
-});

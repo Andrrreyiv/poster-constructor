@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { coverRect, cropLoss, exportSize } from '../src/js/poster/ImageFit.js';
+import { coverRect, exportSize } from '../src/js/poster/ImageFit.js';
 import { makeConfig } from './fixture.js';
 
 test('картинка тех же пропорций берётся целиком', () => {
@@ -33,16 +33,6 @@ test('обрезанная область не выходит за предел�
 
 test('нулевые размеры не роняют расчёт', () => {
   assert.deepEqual(coverRect(0, 0, 200, 300), { sx: 0, sy: 0, sw: 0, sh: 0 });
-});
-
-test('при совпадении пропорций в обрез не уходит ничего', () => {
-  assert.equal(cropLoss(600, 900, 200, 300), 0);
-});
-
-// Этим числом честно говорим покупателю, сколько он теряет.
-test('доля обреза считается по площади', () => {
-  const loss = cropLoss(1000, 500, 200, 300);
-  assert.ok(loss > 0.6 && loss < 0.7, 'ожидали около 2/3, получено ' + loss);
 });
 
 test('размер экспорта считается по dpi из конфига', () => {

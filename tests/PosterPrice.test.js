@@ -19,6 +19,11 @@ test('без рамы доплаты нет', () => {
   assert.equal(frameAmount(makeConfig(), null), 0);
 });
 
+// Иначе в итоговой строке появлялось бы «NaN ₽».
+test('неизвестная рама стоит ноль, а не NaN', () => {
+  assert.equal(frameAmount(makeConfig(), 'битый'), 0);
+});
+
 test('итог — это пластина плюс рама', () => {
   const p = priceOf(makeConfig(), { plateId: '30x40', frameId: 'wood' });
   assert.equal(p.plate, 1500);

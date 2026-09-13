@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  frameList, frameById, framePrice, frameThickness, frameGeometry,
+  frameList, frameById, frameThickness, frameGeometry,
 } from '../src/js/poster/FrameOption.js';
 import { makeConfig } from './fixture.js';
 
@@ -17,16 +17,6 @@ test('выключенная опция рамы даёт пустой спис�
 test('null и неизвестный id одинаково означают «без рамы»', () => {
   assert.equal(frameById(makeConfig(), null), null);
   assert.equal(frameById(makeConfig(), 'нет-такой'), null);
-});
-
-test('цена рамы берётся из конфига, без рамы — ноль', () => {
-  assert.equal(framePrice(makeConfig(), 'wood'), 600);
-  assert.equal(framePrice(makeConfig(), null), 0);
-});
-
-// Иначе в итоговой строке появлялось бы NaN ₽.
-test('цена неизвестной рамы — ноль, а не NaN', () => {
-  assert.equal(framePrice(makeConfig(), 'битый'), 0);
 });
 
 // Физически багет одинаков по периметру, поэтому считаем от МЕНЬШЕЙ стороны.

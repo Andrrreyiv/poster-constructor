@@ -354,12 +354,29 @@ export class PosterApp {
   }
 
   /**
-   * Состав заказа.
+   * Настройки кассы. Файл woo.json кладёт mu-plugin приёма заказов на боевом сайте.
    *
-   * ⚠️ ЭТАП 1: заказ никуда не уходит — прототип стоит на GitHub Pages, кассы там нет.
-   * Клиент 13.09 просил корзину («сразу заявку в корзину и заказ»), она делается
-   * на этапе 2 отдельным mu-plugin. Здесь окно показывает ровно то, что уйдёт в заказ,
-   * чтобы состав можно было утвердить до выкладки.
+   * ⚠️ Его ОТСУТСТВИЕ — рабочее состояние, а не поломка: на демо-стенде (GitHub Pages)
+   * WordPress нет и файла не будет. 404 запоминаем, чтобы не дёргать сеть на каждый клик,
+   * а вот сорванный запрос НЕ кешируем: сеть могла просто моргнуть.
+   */
+  async wooConfig() {
+    if (this._woo !== undefined) return this._woo;
+    try {
+      const r = await fetch('woo.json', { cache: 'no-store' });
+      this._woo = r.ok ? await r.json() : null;
+    } catch {
+      return null;
+    }
+    return this._woo;
+  }
+
+  /**
+   * Окно заказа: состав, количество и отправка в корзину.
+   *
+   * Клиент 13.09 просил корзину прямо («сразу заявку в корзину и заказ»), поэтому
+   * отправка тут настоящая. На стенде без WordPress кнопка честно говорит, что корзины
+   * нет, вместо того чтобы молча ничего не делать.
    */
   showOrder() {
     const spec = this.currentSpec();
@@ -372,9 +389,9 @@ export class PosterApp {
 
     const head = el('div', 'ordm__head');
     head.append(el('h3', 'ordm__title', 'Ваш постер'));
-    const close = el('button', 'ordm__close', '×');
-    close.type = 'button';
-    head.append(close);
+    const closeBtn = el('button', 'ordm__close', '×');
+    closeBtn.type = 'button';
+    head.append(closeBtn);
     card.append(head);
 
     const list = el('div', 'ordm__list');
@@ -392,13 +409,99 @@ export class PosterApp {
       card.append(el('p', 'ordm__warn', this.currentQuality().message));
     }
 
-    card.append(el('p', 'ordm__note',
-      'Это прототип: заказ пока никуда не отправляется. Приём заказа и корзина — следующий этап.'));
+    const qtyRow = el('div', 'ordm__qty');
+    qtyRow.append(el('label', '', 'Количество'));
+    const qty = document.createElement('input');
+    qty.type = 'number';
+    qty.min = '1';
+    qty.max = '1000';
+    qty.value = '1';
+    qty.className = 'ordm__qty-input';
+    qtyRow.append(qty);
+    card.append(qtyRow);
 
-    close.addEventListener('click', () => overlay.remove());
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+    const err = el('p', 'ordm__err');
+    err.hidden = true;
+    card.append(err);
+
+    const foot = el('div', 'ordm__foot');
+    const confirm = el('button', 'btn btn--primary', 'В корзину');
+    confirm.type = 'button';
+    const cancel = el('button', 'btn btn--ghost', 'Вернуться');
+    cancel.type = 'button';
+    foot.append(confirm, cancel);
+    card.append(foot);
+
+    const close = () => overlay.remove();
+    closeBtn.addEventListener('click', close);
+    cancel.addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    confirm.addEventListener('click', () => this.submitOrder({ qty, err, confirm, close }));
+
     overlay.append(card);
     document.body.append(overlay);
+  }
+
+  /**
+   * Отправка заказа в корзину WooCommerce.
+   *
+   * ☠️ Сумма едет полем poster_total ТОЛЬКО ДЛЯ СВЕРКИ и ценой не становится: сервер
+   * пересчитывает её сам по id пластины и id рамы. Это оплаченный урок конструктора
+   * футболок, повторять подмену цены в браузере нельзя.
+   */
+  async submitOrder({ qty, err, confirm, close }) {
+    confirm.disabled = true;
+    err.hidden = true;
+    try {
+      const woo = await this.wooConfig();
+      const spec = this.currentSpec();
+      const count = Math.max(1, Math.min(1000, Number(qty.value) || 1));
+
+      if (!woo || !woo.productId) {
+        err.hidden = false;
+        err.textContent = 'На этом стенде корзины нет: это демонстрация. '
+          + 'Состав постера собран, макет можно скачать кнопкой ниже.';
+        confirm.disabled = false;
+        return;
+      }
+
+      const canvas = composePoster(this.config, this.state, this._img, this.frameImage());
+      const png = canvas ? canvas.toDataURL('image/jpeg', 0.85) : null;
+
+      const base = String(woo.siteUrl || '').replace(/\/$/, '');
+      const form = document.createElement('form');
+      form.method = 'POST';
+      // ⚠️ На боевом конструктор живёт в iframe — уводим ВСЮ страницу в корзину,
+      // иначе корзина откроется внутри рамки конструктора.
+      form.target = '_top';
+      form.action = base + '/?add-to-cart=' + encodeURIComponent(woo.productId);
+
+      const add = (n, v) => {
+        const i = document.createElement('input');
+        i.type = 'hidden';
+        i.name = n;
+        i.value = v;
+        form.append(i);
+      };
+      add('quantity', String(count));
+      add('poster_spec', specLines(spec).map(([k, v]) => k + ': ' + v).join('\n'));
+      add('poster_total', String(spec.price.total));
+      add('poster_order', JSON.stringify({
+        plateId: this.state.plateId,
+        frameId: this.state.frameId,
+        orientation: spec.orientation,
+        quantity: count,
+      }));
+      if (png) add('poster_png', png);
+
+      document.body.append(form);
+      form.submit();
+      close();
+    } catch {
+      err.hidden = false;
+      err.textContent = 'Не получилось отправить заказ. Попробуйте ещё раз.';
+      confirm.disabled = false;
+    }
   }
 
   /** Единственная точка правды по сумме. Микро-удар цены — как у футболок. */
