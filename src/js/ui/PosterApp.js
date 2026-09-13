@@ -18,7 +18,7 @@ import { frameList, frameGeometry } from '../poster/FrameOption.js?v=20260913c';
 import { assessResolution } from '../poster/Resolution.js?v=20260913c';
 import { priceOf } from '../poster/PosterPrice.js?v=20260913c';
 import { buildOrderSpec, specLines } from '../poster/OrderSpec.js?v=20260913c';
-import { drawPoster, composePoster, mockupFileName } from '../poster/PosterCanvas.js?v=20260913c';
+import { drawPoster, composePoster, mockupFileName, preloadFrames } from '../poster/PosterCanvas.js?v=20260913c';
 
 export class PosterApp {
   constructor({ config, stageEl, panelEl, manifest = null }) {
@@ -38,12 +38,24 @@ export class PosterApp {
     this.panelRefs = {};
     this.library = new LibraryPanel(config, manifest);
     this._img = null;         // загруженный HTMLImageElement для отрисовки
+    this._frameImgs = {};     // накладные картинки рам по id
     this._lastTotal = null;
   }
 
   start() {
     this._wireAccordion();
+    // Текстуры рам тянем заранее: иначе первый клик по раме показал бы запасную
+    // заливку, а накладная появилась бы вторым кадром — мигание на глазах покупателя.
+    preloadFrames(this.config, (id, img) => {
+      this._frameImgs[id] = img;
+      if (this.state.frameId === id) this.renderStage();
+    });
     this.render();
+  }
+
+  /** Текстура выбранной рамы, если она уже доехала. */
+  frameImage() {
+    return this.state.frameId ? (this._frameImgs[this.state.frameId] ?? null) : null;
   }
 
   // ── Аккордеон ──────────────────────────────────────────────────────────────
@@ -148,7 +160,7 @@ export class PosterApp {
     canvas.width = geo.outerW;
     canvas.height = geo.outerH;
     const ctx = canvas.getContext('2d');
-    drawPoster(ctx, this._img, geo);
+    drawPoster(ctx, this._img, geo, this.frameImage());
 
     shell.append(canvas);
     this.stageEl.append(shell);
@@ -333,7 +345,7 @@ export class PosterApp {
   }
 
   downloadMockup() {
-    const canvas = composePoster(this.config, this.state, this._img);
+    const canvas = composePoster(this.config, this.state, this._img, this.frameImage());
     if (!canvas) return;
     const a = document.createElement('a');
     a.download = mockupFileName(this.currentSpec());
