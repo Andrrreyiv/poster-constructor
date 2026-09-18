@@ -346,6 +346,14 @@ function jetron_ps_handle_prints(&$prints, &$notices) {
         if ($label === '') {
             continue;
         }
+        // Явное удаление галочкой. В админке футболок у категории есть своя кнопка
+        // «Удалить», и владелец привык к ней: догадаться, что категория убирается
+        // стиранием названия, невозможно. Файлы с диска НЕ трогаем — как и при удалении
+        // одной картинки: вернуть их потом нельзя, а место дешевле.
+        if (!empty($row['del'])) {
+            $notices[] = array('warn', 'Категория «' . $label . '» убрана из библиотеки. Файлы остались на сервере.');
+            continue;
+        }
         $slug = sanitize_key($row['slug'] ?? '');
         if ($slug === '') {
             $slug = sanitize_title($label);
@@ -375,8 +383,28 @@ function jetron_ps_handle_prints(&$prints, &$notices) {
             );
         }
 
-        $out[] = array('slug' => $slug, 'label' => $label, 'items' => array_values($items));
+        // Порядок: категории покупатель видит списком, а клиент раскладывает их
+        // по игрокам, значит порядок ему нужен. Пустое поле уводит категорию в КОНЕЦ,
+        // а не в начало: иначе новая строка прыгала бы наверх при каждом сохранении.
+        $order = $row['order'] ?? '';
+        $out[] = array(
+            'slug'   => $slug,
+            'label'  => $label,
+            'items'  => array_values($items),
+            '_order' => is_numeric($order) ? (float) $order : PHP_INT_MAX,
+        );
     }
+
+    // Сортировка стабильная: при равных числах сохраняется порядок формы.
+    $n = 0;
+    foreach ($out as &$c) { $c['_i'] = $n++; }
+    unset($c);
+    usort($out, function ($a, $b) {
+        if ($a['_order'] === $b['_order']) { return $a['_i'] - $b['_i']; }
+        return ($a['_order'] < $b['_order']) ? -1 : 1;
+    });
+    foreach ($out as &$c) { unset($c['_order'], $c['_i']); }
+    unset($c);
 
     if (count($out)) {
         $prints['categories'] = $out;
@@ -604,9 +632,11 @@ function jetron_ps_tab_prints($nonce) {
     echo '<form method="post" enctype="multipart/form-data">';
     wp_nonce_field(JETRON_PS_NONCE);
     echo '<input type="hidden" name="jetron_ps_section" value="prints" />';
-    echo '<p class="description">Категории показываются покупателю списком справа в окне выбора картинки. '
-        . 'Чтобы завести новую, заполните пустую строку внизу. Удаление картинки убирает её из '
-        . 'библиотеки, сам файл остаётся на сервере.</p>';
+    echo '<p class="description">Категории показываются покупателю списком справа в окне выбора картинки, '
+        . 'в том порядке, который вы зададите числом в поле «Порядок»: 1 идёт первой. '
+        . 'Чтобы завести новую категорию, заполните пустую строку внизу. Чтобы убрать категорию, '
+        . 'поставьте галочку «убрать эту категорию целиком». Удаление категории или картинки '
+        . 'убирает их из библиотеки, сами файлы остаются на сервере.</p>';
 
     foreach ($rows as $i => $c) {
         $label = $c['label'] ?? '';
@@ -616,7 +646,15 @@ function jetron_ps_tab_prints($nonce) {
         echo '<div style="background:#fff;border:1px solid #ccd0d4;padding:12px 16px;margin:14px 0;max-width:900px">';
         echo '<p><label><strong>Название категории</strong><br />'
             . '<input type="text" size="30" name="cat[' . $i . '][label]" value="' . esc_attr($label) . '" /></label> '
+            . '<label style="margin-left:14px"><strong>Порядок</strong><br />'
+            . '<input type="number" step="1" style="width:80px" name="cat[' . $i . '][order]" value="'
+                . esc_attr($label === '' ? '' : ($i + 1)) . '" /></label>'
             . '<input type="hidden" name="cat[' . $i . '][slug]" value="' . esc_attr($slug) . '" /></p>';
+        if ($label !== '') {
+            echo '<p><label style="color:#b32d2e">'
+                . '<input type="checkbox" name="cat[' . $i . '][del]" value="1" /> '
+                . 'убрать эту категорию целиком</label></p>';
+        }
 
         if (count($items)) {
             echo '<div style="display:flex;flex-wrap:wrap;gap:10px;margin:10px 0">';
