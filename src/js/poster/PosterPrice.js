@@ -8,8 +8,8 @@
 // у обоих предыдущих конструкторов этого заказчика. Тогда меняется только plateAmount():
 // разбор состава заказа и детализация остаются прежними.
 
-import { plateById } from './Plates.js?v=20260918a';
-import { frameById } from './FrameOption.js?v=20260918a';
+import { plateById } from './Plates.js?v=20260918b';
+import { frameById } from './FrameOption.js?v=20260918b';
 
 /** Цена самой пластины. Неизвестный id даёт 0, а не NaN в итоговой строке. */
 export function plateAmount(config, plateId) {

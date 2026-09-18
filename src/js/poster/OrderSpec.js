@@ -13,10 +13,10 @@
 // и id рамы, а присланное браузером идёт только на сверку расхождений. У конструктора
 // футболок это уже оплаченный урок: set_price из браузера не берётся никогда.
 
-import { plateById, plateSize } from './Plates.js?v=20260918a';
-import { frameById } from './FrameOption.js?v=20260918a';
-import { priceOf } from './PosterPrice.js?v=20260918a';
-import { assessResolution } from './Resolution.js?v=20260918a';
+import { plateById, plateSize } from './Plates.js?v=20260918b';
+import { frameById } from './FrameOption.js?v=20260918b';
+import { priceOf } from './PosterPrice.js?v=20260918b';
+import { assessResolution } from './Resolution.js?v=20260918b';
 
 /**
  * Полный состав заказа.

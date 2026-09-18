@@ -8,18 +8,18 @@
 // из голосового 10:27. Ничего сверх них здесь нет, кроме переключателя ориентации —
 // он помечен в конфиге как наша добавка и выключается одним флагом.
 
-import { PanelAccordion } from './PanelAccordion.js?v=20260918a';
-import { LibraryPanel } from '../poster/LibraryPanel.js?v=20260918a';
+import { PanelAccordion } from './PanelAccordion.js?v=20260918b';
+import { LibraryPanel } from '../poster/LibraryPanel.js?v=20260918b';
 import {
   plateList, plateById, defaultPlate, plateSize,
   orientationEnabled, defaultOrientation,
-} from '../poster/Plates.js?v=20260918a';
-import { frameList, frameGeometry } from '../poster/FrameOption.js?v=20260918a';
-import { assessResolution } from '../poster/Resolution.js?v=20260918a';
-import { priceOf } from '../poster/PosterPrice.js?v=20260918a';
-import { buildOrderSpec, specLines } from '../poster/OrderSpec.js?v=20260918a';
-import { drawPoster, composePoster, mockupFileName, preloadFrames } from '../poster/PosterCanvas.js?v=20260918a';
-import { aboutBlock, frameHint } from '../poster/AboutText.js?v=20260918a';
+} from '../poster/Plates.js?v=20260918b';
+import { frameList, frameGeometry } from '../poster/FrameOption.js?v=20260918b';
+import { assessResolution } from '../poster/Resolution.js?v=20260918b';
+import { priceOf } from '../poster/PosterPrice.js?v=20260918b';
+import { buildOrderSpec, specLines } from '../poster/OrderSpec.js?v=20260918b';
+import { drawPoster, composePoster, mockupFileName, preloadFrames } from '../poster/PosterCanvas.js?v=20260918b';
+import { aboutBlock, frameHint } from '../poster/AboutText.js?v=20260918b';
 
 export class PosterApp {
   constructor({ config, stageEl, panelEl, manifest = null }) {
@@ -243,9 +243,13 @@ export class PosterApp {
     return sec;
   }
 
-  /** Ориентация. Наша добавка — см. комментарий в Plates.plateSize. */
+  /**
+   * Ориентация. Наша добавка — см. комментарий в Plates.plateSize.
+   * Подпись убрана по просьбе клиента 18.09: «книжный, альбом и так понятно»,
+   * сами кнопки называют себя лучше заголовка над ними.
+   */
   orientationField() {
-    const sec = section('Как повернуть');
+    const sec = section(null);
     sec.append(this.segment(
       [{ id: 'portrait', label: 'Книжная' }, { id: 'landscape', label: 'Альбомная' }],
       this.state.orientation,
@@ -254,9 +258,12 @@ export class PosterApp {
     return sec;
   }
 
-  /** Картинка: кнопка библиотеки и загрузка своего файла (обе — внутри окна). */
+  /**
+   * Картинка: кнопка библиотеки и загрузка своего файла (обе — внутри окна).
+   * Подпись убрана по просьбе клиента 18.09: текст на самой кнопке уже всё объясняет.
+   */
   imageField() {
-    const sec = section('Картинка');
+    const sec = section(null);
     const holder = el('div', '');
     this.library.renderTrigger(holder, {
       thumbSrc: this.state.image?.src ?? null,
