@@ -8,17 +8,18 @@
 // из голосового 10:27. Ничего сверх них здесь нет, кроме переключателя ориентации —
 // он помечен в конфиге как наша добавка и выключается одним флагом.
 
-import { PanelAccordion } from './PanelAccordion.js?v=20260913c';
-import { LibraryPanel } from '../poster/LibraryPanel.js?v=20260913c';
+import { PanelAccordion } from './PanelAccordion.js?v=20260918a';
+import { LibraryPanel } from '../poster/LibraryPanel.js?v=20260918a';
 import {
   plateList, plateById, defaultPlate, plateSize,
   orientationEnabled, defaultOrientation,
-} from '../poster/Plates.js?v=20260913c';
-import { frameList, frameGeometry } from '../poster/FrameOption.js?v=20260913c';
-import { assessResolution } from '../poster/Resolution.js?v=20260913c';
-import { priceOf } from '../poster/PosterPrice.js?v=20260913c';
-import { buildOrderSpec, specLines } from '../poster/OrderSpec.js?v=20260913c';
-import { drawPoster, composePoster, mockupFileName, preloadFrames } from '../poster/PosterCanvas.js?v=20260913c';
+} from '../poster/Plates.js?v=20260918a';
+import { frameList, frameGeometry } from '../poster/FrameOption.js?v=20260918a';
+import { assessResolution } from '../poster/Resolution.js?v=20260918a';
+import { priceOf } from '../poster/PosterPrice.js?v=20260918a';
+import { buildOrderSpec, specLines } from '../poster/OrderSpec.js?v=20260918a';
+import { drawPoster, composePoster, mockupFileName, preloadFrames } from '../poster/PosterCanvas.js?v=20260918a';
+import { aboutBlock, frameHint } from '../poster/AboutText.js?v=20260918a';
 
 export class PosterApp {
   constructor({ config, stageEl, panelEl, manifest = null }) {
@@ -38,6 +39,16 @@ export class PosterApp {
     this.panelRefs = {};
     this.library = new LibraryPanel(config, manifest);
     this._img = null;         // загруженный HTMLImageElement для отрисовки
+
+    // Узкий экран: там колонки идут одна под другой, и подробное описание отодвинуло бы
+    // кнопку «Заказать» вниз. Слушатель заводится ОДИН раз на приложение, а не на каждую
+    // перерисовку сцены: renderStage вызывается на любое действие покупателя.
+    // В тестах браузера нет, matchMedia не существует — тогда текст просто открыт.
+    this._narrow = typeof matchMedia === 'function' ? matchMedia('(max-width: 900px)') : null;
+    this._aboutEl = null;
+    this._narrow?.addEventListener?.('change', () => {
+      if (this._aboutEl) this._aboutEl.open = !this._narrow.matches;
+    });
     this._frameImgs = {};     // накладные картинки рам по id
     this._lastTotal = null;
   }
@@ -171,6 +182,32 @@ export class PosterApp {
       caption.append(el('span', 'stage__hint', 'Выберите картинку — она ляжет на пластину целиком'));
     }
     this.stageEl.append(caption);
+
+    // Описание товара: клиент 17.09 просил занять текстом пустое место слева, под
+    // подписью с размером. Раздела нет или он пуст — блока просто не будет.
+    const about = aboutBlock(this.config);
+    if (about) this.stageEl.append(this.aboutField(about));
+  }
+
+  /**
+   * Текст под подписью. На компьютере виден целиком, на телефоне подробности свёрнуты
+   * под «Подробнее»: на ширине до 900px панель с кнопкой «Заказать» уезжает ПОД сцену
+   * (см. медиазапрос в app.css), и полный текст утащил бы кнопку заказа за сгиб экрана.
+   */
+  aboutField(about) {
+    const box = el('section', 'about');
+    if (about.title) box.append(el('h2', 'about__title', about.title));
+    if (about.lead) box.append(el('p', 'about__lead', about.lead));
+    if (about.details.length) {
+      const more = document.createElement('details');
+      more.className = 'about__more';
+      more.append(el('summary', 'about__toggle', 'Подробнее'));
+      for (const абзац of about.details) more.append(el('p', 'about__p', абзац));
+      more.open = !this._narrow?.matches;
+      this._aboutEl = more;
+      box.append(more);
+    }
+    return box;
   }
 
   renderPanel() {
@@ -272,6 +309,12 @@ export class PosterApp {
       grid.append(btn);
     }
     sec.append(grid);
+
+    // Строка про подбор рамы под цвет принта. Клиент просил её голосовым 17.09 и именно
+    // здесь, у выбора рамы, а не в общем описании товара.
+    const hint = frameHint(this.config);
+    if (hint) sec.append(el('p', 'frames__hint', hint));
+
     return sec;
   }
 

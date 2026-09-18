@@ -45,6 +45,24 @@ export function applyPosterAdmin(config, admin) {
     out.orientation = { ...out.orientation, enabled: admin.orientation.enabled };
   }
 
+  // Описание товара под превью. Клиент 17.09 сказал, что формулировку подберёт сам
+  // и «попозже поищет» в интернете, поэтому текст обязан правиться из админки, без
+  // выкладки кода. Пустая строка законна: это «убрать», а не «ошибка».
+  if (admin.about && typeof admin.about === 'object' && !Array.isArray(admin.about)) {
+    const about = { ...(out.about || {}) };
+    if (typeof admin.about.enabled === 'boolean') about.enabled = admin.about.enabled;
+    for (const ключ of ['title', 'lead', 'frameHint']) {
+      const v = admin.about[ключ];
+      if (typeof v === 'string') about[ключ] = v.trim();
+    }
+    if (Array.isArray(admin.about.details)) {
+      about.details = admin.about.details
+        .filter((s) => typeof s === 'string' && s.trim())
+        .map((s) => s.trim());
+    }
+    out.about = about;
+  }
+
   return out;
 }
 

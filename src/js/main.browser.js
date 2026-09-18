@@ -2,15 +2,15 @@
 // Поток запуска повторяет оба предыдущих конструктора этого заказчика, чтобы выкладка
 // на этап 2 не требовала переделки загрузки.
 
-import { validateConfig } from './core/ConfigLoader.js?v=20260913c';
-import { PosterApp } from './ui/PosterApp.js?v=20260913c';
-import { applyPosterAdmin, applyPrintsOverride } from './poster/AdminOverrides.js?v=20260913c';
+import { validateConfig } from './core/ConfigLoader.js?v=20260918a';
+import { PosterApp } from './ui/PosterApp.js?v=20260918a';
+import { applyPosterAdmin, applyPrintsOverride } from './poster/AdminOverrides.js?v=20260918a';
 
 // Версия и у данных: без неё браузер отдавал старый конфиг из кеша, и правки не доезжали.
 // ⚠️ Токен живёт в ДВУХ местах — здесь и в index.html. Забыл одно — «обновил, а ничего
 // не поменялось» на дни. На боевом добавится третье место: src рамки на странице WP.
-const CONFIG_URL = 'src/config/poster-config.json?v=20260913c';
-const MANIFEST_URL = 'src/config/prints-manifest.json?v=20260913c';
+const CONFIG_URL = 'src/config/poster-config.json?v=20260918a';
+const MANIFEST_URL = 'src/config/prints-manifest.json?v=20260918a';
 
 async function boot() {
   const res = await fetch(CONFIG_URL);

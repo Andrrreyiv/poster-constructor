@@ -117,6 +117,36 @@ body {
   font-size: 19px; letter-spacing: .02em; color: var(--ink);
 }
 .stage__hint { font-size: 13.5px; color: var(--muted); }
+
+/* ── Описание товара под подписью ───────────────────────────────────────────────
+   Клиент 17.09: слева под размером остаётся пустое место, туда просил текст.
+   Ширина держится по длинной стороне холста (560px), иначе строки растягиваются
+   на всю карточку и читаются тяжело. */
+.about {
+  width: 100%;
+  max-width: 560px;
+  margin: 2px auto 0;
+  text-align: left;
+}
+.about__title {
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-size: 15px; font-weight: 600; letter-spacing: .02em;
+  text-transform: uppercase; color: var(--ink-2);
+}
+.about__lead { margin: 0; font-size: 14px; line-height: 1.5; color: var(--ink-2); }
+.about__p { margin: 8px 0 0; font-size: 13.5px; line-height: 1.55; color: var(--muted); }
+.about__more { margin-top: 4px; }
+.about__toggle {
+  cursor: pointer; padding: 4px 0;
+  font-size: 13.5px; font-weight: 600; color: var(--brand-strong);
+  list-style: none;
+}
+.about__toggle::-webkit-details-marker { display: none; }
+/* На компьютере текст открыт всегда, и ссылка-раскрывашка там только мешает. */
+@media (min-width: 901px) {
+  .about__toggle { display: none; }
+}
 .fatal { color: var(--danger); font-size: 15px; text-align: center; padding: 40px 20px; }
 
 /* ── Панель ─────────────────────────────────────────────────────────────────── */
@@ -165,6 +195,8 @@ body {
 
 /* Рамы: цветная плашка плюс подпись и доплата */
 .frames { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+/* Подсказка про подбор рамы под цвет принта — просьба клиента 17.09. */
+.frames__hint { margin: 10px 0 0; font-size: 13px; line-height: 1.45; color: var(--muted); }
 .frameopt {
   display: flex; align-items: center; gap: 8px;
   padding: 9px 10px;

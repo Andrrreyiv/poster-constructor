@@ -304,6 +304,27 @@ function jetron_ps_handle_catalog(&$admin, &$notices) {
 
     // ── Поворот пластины ──
     $admin['orientation'] = array('enabled' => !empty($_POST['orientation_enabled']));
+
+    // ── Описание товара ──
+    // Клиент 17.09 просил текст под картинкой и сказал, что формулировку подберёт сам.
+    // Поэтому он правится здесь, без выкладки кода. Отдельного тумблера «показывать»
+    // нет намеренно: пустой текст и есть «не показывать», лишний переключатель только
+    // добавил бы владельцу способ выключить блок и потом искать, почему он пропал.
+    $about = $admin['about'] ?? array();
+    $about['title']     = sanitize_text_field($_POST['about_title'] ?? '');
+    $about['lead']      = sanitize_textarea_field($_POST['about_lead'] ?? '');
+    $about['frameHint'] = sanitize_text_field($_POST['about_frame_hint'] ?? '');
+
+    $details = array();
+    foreach (preg_split('/\r\n|\r|\n/', (string) ($_POST['about_details'] ?? '')) as $line) {
+        $line = sanitize_textarea_field($line);
+        if (trim($line) !== '') {
+            $details[] = $line;
+        }
+    }
+    $about['details'] = $details;
+    $about['enabled'] = (trim($about['lead']) !== '' || count($details) > 0);
+    $admin['about']   = $about;
 }
 
 /**
@@ -455,12 +476,30 @@ function jetron_ps_default_frames() {
     );
 }
 
+/** Базовый текст описания: то же, что в poster-config.json, на случай пустого admin.json. */
+function jetron_ps_default_about() {
+    return array(
+        'enabled'   => true,
+        'title'     => 'О постере',
+        'lead'      => 'Изображение наносится на металлическую пластину: такой постер долговечнее бумажного.',
+        'details'   => array(
+            'Пластина лёгкая и не бьётся, повесить её можно и там, где стекло ставить не хочется.',
+            'Изображение занимает всю поверхность пластины, поля и рамка на картинке не обрезаются.',
+            'ЗАГЛУШКА: сюда встанут толщина пластины, способ нанесения изображения и способ крепления на стену. Ждём эти три вещи от владельца магазина.',
+        ),
+        'frameHint' => 'Раму можно подобрать под цвет принта.',
+    );
+}
+
 function jetron_ps_tab_catalog($nonce) {
     $admin  = jetron_ps_load('admin.json');
     $plates = $admin['plates'] ?? jetron_ps_default_plates();
     $frames = $admin['frames'] ?? jetron_ps_default_frames();
     $q      = $admin['quality'] ?? array('targetDpi' => 150, 'minDpi' => 100);
     $orient = !isset($admin['orientation']['enabled']) || !empty($admin['orientation']['enabled']);
+    // Предзаполнение обязательно: форма отправляет ВСЕ свои поля, и без него первое же
+    // сохранение цен молча стёрло бы описание товара под картинкой.
+    $about  = $admin['about'] ?? jetron_ps_default_about();
 
     // Три пустые строки внизу: добавить размер должно быть можно без отдельной кнопки.
     $rows = array_merge($plates, array(array(), array(), array()));
@@ -530,6 +569,28 @@ function jetron_ps_tab_catalog($nonce) {
         . 'показывать покупателю выбор «книжная / альбомная»</label>'
         . '<p class="description">Без поворота горизонтальная фотография на вертикальной пластине '
         . 'обрезается по бокам. На цену поворот не влияет.</p></td></tr></table>';
+
+    echo '<h3>Описание товара</h3>';
+    echo '<p class="description">Текст под картинкой в конструкторе, слева. Первая строка видна '
+        . 'сразу, подробности на телефоне прячутся под ссылку «Подробнее», на компьютере видны '
+        . 'целиком. Очистите первую строку и подробности, чтобы убрать блок совсем.</p>';
+    echo '<table class="form-table">'
+        . '<tr><th>Заголовок</th><td>'
+        . '<input type="text" size="40" name="about_title" value="' . esc_attr($about['title'] ?? '') . '" />'
+        . '</td></tr>'
+        . '<tr><th>Первая строка</th><td>'
+        . '<textarea name="about_lead" rows="2" cols="70">' . esc_textarea($about['lead'] ?? '') . '</textarea>'
+        . '</td></tr>'
+        . '<tr><th>Подробности</th><td>'
+        . '<textarea name="about_details" rows="6" cols="70">'
+            . esc_textarea(implode("\n", (array) ($about['details'] ?? array()))) . '</textarea>'
+        . '<p class="description">По одному абзацу на строку. Пустые строки пропускаются.</p>'
+        . '</td></tr>'
+        . '<tr><th>Подсказка у рам</th><td>'
+        . '<input type="text" size="60" name="about_frame_hint" value="' . esc_attr($about['frameHint'] ?? '') . '" />'
+        . '<p class="description">Строка под кнопками выбора рамы, например «Раму можно подобрать '
+        . 'под цвет принта».</p>'
+        . '</td></tr></table>';
 
     submit_button('Сохранить');
     echo '</form>';

@@ -69,6 +69,47 @@ test('мусор в порогах оставляет базовые значе�
   assert.equal(out.quality.minDpi, 100);
 });
 
+test('описание товара из админки заменяет базовое', () => {
+  const out = applyPosterAdmin(makeConfig({ about: { enabled: true, lead: 'Было' } }), {
+    about: { title: 'О постере', lead: 'Стало', details: ['Первый', 'Второй'], frameHint: 'Под цвет принта' },
+  });
+  assert.equal(out.about.title, 'О постере');
+  assert.equal(out.about.lead, 'Стало');
+  assert.deepEqual(out.about.details, ['Первый', 'Второй']);
+  assert.equal(out.about.frameHint, 'Под цвет принта');
+});
+
+test('пустая строка описания — это «убрать текст», а не ошибка', () => {
+  const out = applyPosterAdmin(makeConfig({ about: { enabled: true, lead: 'Было' } }), {
+    about: { lead: '   ', details: [] },
+  });
+  assert.equal(out.about.lead, '');
+  assert.deepEqual(out.about.details, []);
+});
+
+test('мусор в описании не ломает раздел, годные поля живы', () => {
+  const out = applyPosterAdmin(makeConfig(), {
+    about: { lead: 'Живая строка', details: [null, 7, 'Годная', '  '], title: 42 },
+  });
+  assert.equal(out.about.lead, 'Живая строка');
+  assert.deepEqual(out.about.details, ['Годная']);
+  assert.equal(out.about.title, undefined);
+});
+
+test('описание выключается флагом из админки', () => {
+  const out = applyPosterAdmin(makeConfig({ about: { enabled: true, lead: 'Текст' } }), {
+    about: { enabled: false },
+  });
+  assert.equal(out.about.enabled, false);
+  assert.equal(out.about.lead, 'Текст');
+});
+
+test('битый раздел описания оставляет базовый текст', () => {
+  const было = { enabled: true, lead: 'Базовый текст' };
+  assert.deepEqual(applyPosterAdmin(makeConfig({ about: было }), { about: 'строкой' }).about, было);
+  assert.deepEqual(applyPosterAdmin(makeConfig({ about: было }), { about: ['списком'] }).about, было);
+});
+
 test('ориентацию можно выключить из админки', () => {
   const out = applyPosterAdmin(makeConfig(), { orientation: { enabled: false } });
   assert.equal(out.orientation.enabled, false);
