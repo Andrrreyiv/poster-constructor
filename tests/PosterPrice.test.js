@@ -57,3 +57,25 @@ test('пустое состояние даёт ноль и пустую дета
   assert.equal(p.total, 0);
   assert.deepEqual(p.lines, []);
 });
+
+
+// ── Итог с ценой рамы под выбранную пластину (клиент 19.09) ───────────────────
+
+const сМатрицейЦен = makeConfig({
+  frames: {
+    enabled: true,
+    widthRatio: 0.05,
+    options: [{ id: 'white', label: 'Белая', prices: { '10x15': 200, '30x40': 350 } }],
+  },
+});
+
+test('одна и та же рама стоит по-разному на разных пластинах', () => {
+  assert.equal(priceOf(сМатрицейЦен, { plateId: '10x15', frameId: 'white' }).total, 300 + 200);
+  assert.equal(priceOf(сМатрицейЦен, { plateId: '30x40', frameId: 'white' }).total, 1500 + 350);
+});
+
+test('рама без цены под этот размер не добавляет к итогу и не даёт NaN', () => {
+  const p = priceOf(сМатрицейЦен, { plateId: '40x60', frameId: 'white' });
+  assert.equal(p.frame, 0);
+  assert.equal(p.total, 2200);
+});

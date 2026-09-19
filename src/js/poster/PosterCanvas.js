@@ -8,10 +8,10 @@
 // Рама — накладная картинка с прозрачной серединой, и кладётся она сверху, как надевается
 // в жизни. Если поменять порядок, пластина закрасит багет.
 
-import { coverRect, exportSize } from './ImageFit.js?v=20260918b';
-import { frameGeometry, frameTexture, frameSlice } from './FrameOption.js?v=20260918b';
-import { nineSliceRects } from './NineSlice.js?v=20260918b';
-import { plateSize } from './Plates.js?v=20260918b';
+import { coverRect, exportSize } from './ImageFit.js?v=20260919a';
+import { frameGeometry, frameTexture, frameSlice } from './FrameOption.js?v=20260919a';
+import { nineSliceRects } from './NineSlice.js?v=20260919a';
+import { plateSize } from './Plates.js?v=20260919a';
 
 /**
  * Нарисовать изделие на готовом контексте.

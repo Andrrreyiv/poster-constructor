@@ -141,3 +141,36 @@ test('картинки без адреса отсеиваются внутри �
   });
   assert.equal(out.categories[0].items.length, 1);
 });
+
+
+// ── Карта цен рам из админки (клиент 19.09) ───────────────────────────────────
+
+test('карта цен рам из админки доезжает до конфига', () => {
+  const out = applyPosterAdmin(makeConfig(), {
+    frames: [{ id: 'white', label: 'Белая', prices: { '10x15': 200, '30x40': 350 } }],
+  });
+  assert.deepEqual(out.frames.options[0].prices, { '10x15': 200, '30x40': 350 });
+});
+
+test('мусорная клетка ВЫБРАСЫВАЕТСЯ, а не превращается в ноль', () => {
+  const out = applyPosterAdmin(makeConfig(), {
+    frames: [{ id: 'white', label: 'Белая', prices: { '10x15': 200, '30x40': 'ой', '40x60': -5 } }],
+  });
+  assert.deepEqual(out.frames.options[0].prices, { '10x15': 200 });
+});
+
+test('рама только с картой цен, без плоской цены, считается годной', () => {
+  const out = applyPosterAdmin(makeConfig(), {
+    frames: [{ id: 'wood', label: 'Под дерево', prices: { '10x15': 700 } }],
+  });
+  assert.equal(out.frames.options.length, 1);
+  assert.equal(out.frames.options[0].id, 'wood');
+});
+
+test('рама без единой годной цены отсеивается, базовые рамы живы', () => {
+  const было = makeConfig();
+  const out = applyPosterAdmin(было, {
+    frames: [{ id: 'white', label: 'Белая', prices: { '10x15': 'ой' } }],
+  });
+  assert.deepEqual(out.frames.options, было.frames.options);
+});

@@ -146,3 +146,37 @@ test('доехавшая текстура отдаётся для выбранн
   app.state.frameId = 'white';
   assert.equal(app.frameImage(), null);
 });
+
+
+// ── Снятие рамы, которой нет под выбранной пластиной (клиент 19.09) ───────────
+
+const конфигСМатрицей = makeConfig({
+  frames: {
+    enabled: true,
+    widthRatio: 0.05,
+    options: [{ id: 'white', label: 'Белая', prices: { '10x15': 200 } }],
+  },
+});
+
+test('смена пластины снимает раму, которой под новый размер нет', () => {
+  const app = makeApp({ config: конфигСМатрицей });
+  app.state.frameId = 'white';
+  app.state.plateId = '40x60';
+  app._dropUnavailableFrame();
+  assert.equal(app.state.frameId, null);
+});
+
+test('доступная под этот размер рама остаётся выбранной', () => {
+  const app = makeApp({ config: конфигСМатрицей });
+  app.state.frameId = 'white';
+  app.state.plateId = '10x15';
+  app._dropUnavailableFrame();
+  assert.equal(app.state.frameId, 'white');
+});
+
+test('состояние «без рамы» проверку переживает без изменений', () => {
+  const app = makeApp({ config: конфигСМатрицей });
+  app.state.plateId = '40x60';
+  app._dropUnavailableFrame();
+  assert.equal(app.state.frameId, null);
+});

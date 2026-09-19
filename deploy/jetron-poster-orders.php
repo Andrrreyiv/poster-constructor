@@ -212,12 +212,21 @@ function jetron_ps_ord_plate_price($cfg, $plateId) {
     return null;
 }
 
-function jetron_ps_ord_frame_price($cfg, $frameId) {
+function jetron_ps_ord_frame_price($cfg, $frameId, $plateId) {
     if ($frameId === '') { return 0.0; }   // без рамы — законное состояние
     $opts = isset($cfg['frames']['options']) && is_array($cfg['frames']['options'])
         ? $cfg['frames']['options'] : array();
     foreach ($opts as $f) {
         if (isset($f['id']) && (string) $f['id'] === (string) $frameId) {
+            // Цена по размеру пластины (клиент 19.09). ☠️ Пустая клетка значит «такой рамы
+            // под этот размер НЕТ», поэтому пара отвергается целиком: посчитать её нулём
+            // значит подарить раму, а взять цену другого размера — обсчитать покупателя.
+            if (isset($f['prices']) && is_array($f['prices'])) {
+                return (isset($f['prices'][$plateId]) && is_numeric($f['prices'][$plateId]))
+                    ? (float) $f['prices'][$plateId]
+                    : null;
+            }
+            // Карты цен ещё нет (админку по рамам не сохраняли) — работает плоская цена.
             return (isset($f['price']) && is_numeric($f['price'])) ? (float) $f['price'] : 0.0;
         }
     }
@@ -237,7 +246,8 @@ function jetron_ps_ord_calc($spec) {
     $plate = jetron_ps_ord_plate_price($cfg, $spec['plateId']);
     if ($plate === null) { return null; }
 
-    $frame = jetron_ps_ord_frame_price($cfg, isset($spec['frameId']) ? $spec['frameId'] : '');
+    $frame = jetron_ps_ord_frame_price($cfg, isset($spec['frameId']) ? $spec['frameId'] : '',
+        isset($spec['plateId']) ? $spec['plateId'] : '');
     if ($frame === null) { return null; }
 
     $unit = round($plate + $frame);

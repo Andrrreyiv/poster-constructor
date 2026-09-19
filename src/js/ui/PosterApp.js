@@ -8,18 +8,18 @@
 // из голосового 10:27. Ничего сверх них здесь нет, кроме переключателя ориентации —
 // он помечен в конфиге как наша добавка и выключается одним флагом.
 
-import { PanelAccordion } from './PanelAccordion.js?v=20260918b';
-import { LibraryPanel } from '../poster/LibraryPanel.js?v=20260918b';
+import { PanelAccordion } from './PanelAccordion.js?v=20260919a';
+import { LibraryPanel } from '../poster/LibraryPanel.js?v=20260919a';
 import {
   plateList, plateById, defaultPlate, plateSize,
   orientationEnabled, defaultOrientation,
-} from '../poster/Plates.js?v=20260918b';
-import { frameList, frameGeometry } from '../poster/FrameOption.js?v=20260918b';
-import { assessResolution } from '../poster/Resolution.js?v=20260918b';
-import { priceOf } from '../poster/PosterPrice.js?v=20260918b';
-import { buildOrderSpec, specLines } from '../poster/OrderSpec.js?v=20260918b';
-import { drawPoster, composePoster, mockupFileName, preloadFrames } from '../poster/PosterCanvas.js?v=20260918b';
-import { aboutBlock, frameHint } from '../poster/AboutText.js?v=20260918b';
+} from '../poster/Plates.js?v=20260919a';
+import { framesForPlate, frameGeometry } from '../poster/FrameOption.js?v=20260919a';
+import { assessResolution } from '../poster/Resolution.js?v=20260919a';
+import { priceOf } from '../poster/PosterPrice.js?v=20260919a';
+import { buildOrderSpec, specLines } from '../poster/OrderSpec.js?v=20260919a';
+import { drawPoster, composePoster, mockupFileName, preloadFrames } from '../poster/PosterCanvas.js?v=20260919a';
+import { aboutBlock, frameHint } from '../poster/AboutText.js?v=20260919a';
 
 export class PosterApp {
   constructor({ config, stageEl, panelEl, manifest = null }) {
@@ -143,10 +143,26 @@ export class PosterApp {
   // ── Отрисовка ──────────────────────────────────────────────────────────────
 
   render() {
+    this._dropUnavailableFrame();
     this.renderStage();
     this.renderPanel();
     this.updatePrice();
     this._syncPanels();
+  }
+
+  /**
+   * Снять раму, которой нет под выбранной пластиной.
+   *
+   * Клиент 19.09: незаполненная цена значит «такой рамы нет в наличии». Без этой
+   * проверки покупатель выбрал бы раму на 10×15, переключил размер на 40×60 и увёз
+   * в корзину пару, которой не существует. Молча оставлять её нельзя: на сервере
+   * такая пара отвергается, и человек упёрся бы в отказ уже на оплате.
+   */
+  _dropUnavailableFrame() {
+    if (this.state.frameId === null || this.state.frameId === undefined) return;
+    const есть = framesForPlate(this.config, this.state.plateId)
+      .some((f) => f.id === this.state.frameId);
+    if (!есть) this.state.frameId = null;
   }
 
   /** Сцена: изделие целиком, в пропорциях пластины, с рамой если выбрана. */
@@ -219,7 +235,7 @@ export class PosterApp {
     this.panelEl.append(this.imageField());
     const warn = this.qualityField();
     if (warn) this.panelEl.append(warn);
-    if (frameList(this.config).length) this.panelEl.append(this.frameField());
+    if (framesForPlate(this.config, this.state.plateId).length) this.panelEl.append(this.frameField());
     this.panelEl.append(this.totalField());
     this.panelEl.append(this.actionsField());
   }
@@ -293,9 +309,12 @@ export class PosterApp {
   /** Рама: «без рамы» плюс три вида из конфига. */
   frameField() {
     const sec = section('Рама');
+    // Список и цены зависят от выбранной пластины: с 19.09 у каждой рамы своя цена
+    // под каждый размер, а незаполненная цена прячет раму целиком.
+    const доступные = framesForPlate(this.config, this.state.plateId);
     const options = [
       { id: null, label: 'Без рамы' },
-      ...frameList(this.config).map((f) => ({ id: f.id, label: f.label, price: f.price })),
+      ...доступные.map((f) => ({ id: f.id, label: f.label, price: f.price })),
     ];
     const grid = el('div', 'frames');
     for (const opt of options) {
@@ -303,7 +322,7 @@ export class PosterApp {
       const btn = el('button', 'frameopt' + (on ? ' frameopt--on' : ''));
       btn.type = 'button';
       const chip = el('span', 'frameopt__chip');
-      const found = frameList(this.config).find((f) => f.id === opt.id);
+      const found = доступные.find((f) => f.id === opt.id);
       chip.style.background = found ? (found.face || '#888') : 'transparent';
       if (!found) chip.classList.add('frameopt__chip--none');
       btn.append(chip);

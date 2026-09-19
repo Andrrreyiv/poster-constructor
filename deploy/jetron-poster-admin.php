@@ -181,6 +181,16 @@ add_action('admin_menu', function () {
 // ── Обработка форм ───────────────────────────────────────────────────────────
 
 /**
+ * id пластины из её размера. ОДНА функция на разбор формы и на отрисовку таблицы цен рам:
+ * стоит посчитать id двумя способами, и столбцы матрицы разойдутся с сохранёнными ценами,
+ * а владелец увидит пустые клетки там, где цены проставлены.
+ */
+function jetron_ps_plate_id($w, $h) {
+    return rtrim(rtrim(number_format((float) $w, 2, '.', ''), '0'), '.') . 'x'
+        . rtrim(rtrim(number_format((float) $h, 2, '.', ''), '0'), '.');
+}
+
+/**
  * Разбор вкладки «Пластины и цены».
  *
  * Правило то же, что в AdminOverrides.js: строка без id, без размера или без цены
@@ -205,8 +215,7 @@ function jetron_ps_handle_catalog(&$admin, &$notices) {
             continue;
         }
         // id собираем из размера: он и так уникален и читается в заказе глазами.
-        $id = rtrim(rtrim(number_format($w, 2, '.', ''), '0'), '.') . 'x'
-            . rtrim(rtrim(number_format($h, 2, '.', ''), '0'), '.');
+        $id = jetron_ps_plate_id($w, $h);
         $plates[] = array('id' => $id, 'wCm' => $w + 0, 'hCm' => $h + 0, 'price' => $pr + 0);
     }
 
@@ -232,6 +241,13 @@ function jetron_ps_handle_catalog(&$admin, &$notices) {
         $notices[] = array('warn', 'Ни одной годной пластины не пришло, прежний список оставлен без изменений.');
     }
 
+    // Живые id размеров: цены рам под удалённый размер хранить незачем, иначе при
+    // повторном заведении того же размера всплывёт цена, о которой владелец забыл.
+    $plateIds = array();
+    foreach (($admin['plates'] ?? array()) as $p) {
+        if (!empty($p['id'])) { $plateIds[$p['id']] = true; }
+    }
+
     // ── Рамы ──
     $frames = array();
     $rows   = isset($_POST['frame']) && is_array($_POST['frame']) ? $_POST['frame'] : array();
@@ -253,11 +269,35 @@ function jetron_ps_handle_catalog(&$admin, &$notices) {
             $notices[] = array('warn', 'Рама без названия пропущена.');
             continue;
         }
-        // Цена рамы может быть нулевой: владелец вправе не брать за неё денег.
         $frame = $prev[$id] ?? array();
         $frame['id']    = $id;
         $frame['label'] = $label;
-        $frame['price'] = $price === null ? 0 : $price + 0;
+
+        // Цены по размерам пластин. Клиент 19.09: «под каждую пластину рама
+        // соответственно увеличивается и цена у неё другая… если я не проставил
+        // под дерево, то в конструкторе рама под дерево не отображается».
+        // ☠️ Поэтому пустая клетка НЕ превращается в ноль: ноль это «рама бесплатна»,
+        // а пусто это «такой рамы под этот размер нет в наличии».
+        $prices = array();
+        $raw    = isset($row['prices']) && is_array($row['prices']) ? $row['prices'] : array();
+        foreach ($raw as $plateId => $val) {
+            $pid = sanitize_key((string) $plateId);
+            if ($pid === '' || !isset($plateIds[$pid])) {
+                continue;
+            }
+            $n = jetron_ps_num($val);
+            if ($n !== null) {
+                $prices[$pid] = $n + 0;
+            }
+        }
+        $frame['prices'] = $prices;
+        // Плоская цена больше не источник правды: оставить её значит показывать раму
+        // там, где владелец цену намеренно не проставил.
+        unset($frame['price']);
+        if (!count($prices)) {
+            $notices[] = array('warn', 'У рамы «' . $label . '» не проставлено ни одной цены, '
+                . 'покупателю она показана не будет.');
+        }
 
         $slice = jetron_ps_num($row['slice'] ?? null);
         if ($slice) {
@@ -561,7 +601,7 @@ function jetron_ps_tab_catalog($nonce) {
         . 'на любой размер пластины без искажения углов.</p>';
     $frows = array_merge($frames, array(array()));
     echo '<table class="widefat striped" style="max-width:900px"><thead><tr>'
-        . '<th>Код</th><th>Название</th><th>Доплата, ₽</th><th>Край, px</th>'
+        . '<th>Код</th><th>Название</th><th>Край, px</th>'
         . '<th>Картинка рамы</th><th>Сейчас</th></tr></thead><tbody>';
     foreach ($frows as $i => $f) {
         echo '<tr>'
@@ -569,8 +609,6 @@ function jetron_ps_tab_catalog($nonce) {
                 . esc_attr($f['id'] ?? '') . '" /></td>'
             . '<td><input type="text" size="16" name="frame[' . $i . '][label]" value="'
                 . esc_attr($f['label'] ?? '') . '" /></td>'
-            . '<td><input type="text" size="8" name="frame[' . $i . '][price]" value="'
-                . esc_attr($f['price'] ?? '') . '" /></td>'
             . '<td><input type="text" size="6" name="frame[' . $i . '][slice]" value="'
                 . esc_attr($f['slice'] ?? '') . '" /></td>'
             . '<td><input type="file" name="frame_texture[]" accept="image/*" /></td>'
@@ -581,6 +619,34 @@ function jetron_ps_tab_catalog($nonce) {
             echo '<span class="description">нет</span>';
         }
         echo '</td></tr>';
+    }
+    echo '</tbody></table>';
+
+    // ── Цены рам по размерам пластин ──
+    // Клиент 19.09: «под каждую пластину рама соответственно увеличивается и цена у неё
+    // другая». Раньше цена была одним числом на раму, теперь это таблица рама × размер.
+    echo '<h3>Цены рам по размерам пластин</h3>';
+    echo '<p class="description">Цена рамы зависит от размера пластины, поэтому задаётся '
+        . 'таблицей, а не одним числом. <strong>Пустая клетка значит, что такой рамы под этот '
+        . 'размер нет в наличии, и покупателю она не показывается вовсе.</strong> Ноль это '
+        . 'не пусто: ноль значит «рама бесплатна». Новая рама появится в этой таблице после '
+        . 'сохранения, новый размер пластины — отдельным столбцом.</p>';
+    echo '<table class="widefat striped" style="max-width:900px"><thead><tr><th>Рама</th>';
+    foreach ($plates as $p) {
+        echo '<th>' . esc_html(($p['wCm'] ?? '') . ' × ' . ($p['hCm'] ?? '')) . '</th>';
+    }
+    echo '</tr></thead><tbody>';
+    foreach ($frames as $i => $f) {
+        echo '<tr><td><strong>' . esc_html($f['label'] ?? ($f['id'] ?? '')) . '</strong></td>';
+        foreach ($plates as $p) {
+            $pid = jetron_ps_plate_id($p['wCm'] ?? 0, $p['hCm'] ?? 0);
+            // Предзаполнение прежней плоской ценой: первое же сохранение не должно молча
+            // спрятать рамы, которые сегодня видны покупателю.
+            $val = isset($f['prices'][$pid]) ? $f['prices'][$pid] : ($f['price'] ?? '');
+            echo '<td><input type="text" size="6" name="frame[' . $i . '][prices][' . esc_attr($pid) . ']" '
+                . 'value="' . esc_attr($val) . '" /></td>';
+        }
+        echo '</tr>';
     }
     echo '</tbody></table>';
 

@@ -8,8 +8,8 @@
 // у обоих предыдущих конструкторов этого заказчика. Тогда меняется только plateAmount():
 // разбор состава заказа и детализация остаются прежними.
 
-import { plateById } from './Plates.js?v=20260918b';
-import { frameById } from './FrameOption.js?v=20260918b';
+import { plateById } from './Plates.js?v=20260919a';
+import { frameById, framePriceFor } from './FrameOption.js?v=20260919a';
 
 /** Цена самой пластины. Неизвестный id даёт 0, а не NaN в итоговой строке. */
 export function plateAmount(config, plateId) {
@@ -17,10 +17,17 @@ export function plateAmount(config, plateId) {
   return plate ? Number(plate.price) || 0 : 0;
 }
 
-/** Доплата за раму. Без рамы — ноль. */
-export function frameAmount(config, frameId) {
-  const frame = frameById(config, frameId);
-  return frame ? Number(frame.price) || 0 : 0;
+/**
+ * Доплата за раму ПОД ВЫБРАННУЮ ПЛАСТИНУ. Без рамы — ноль.
+ *
+ * Рамы под этот размер нет — тоже ноль, но пара «пластина + недоступная рама» до сюда
+ * не доходит: PosterApp снимает недоступную раму при смене пластины. Ноль здесь страхует
+ * от NaN в итоговой строке, а настоящую защиту держит сервер — в кассе такая пара
+ * отвергается целиком, а не считается бесплатной.
+ */
+export function frameAmount(config, frameId, plateId) {
+  const v = framePriceFor(config, frameId, plateId);
+  return v === null ? 0 : v;
 }
 
 /**
@@ -33,7 +40,7 @@ export function frameAmount(config, frameId) {
  */
 export function priceOf(config, state = {}) {
   const plate = plateAmount(config, state.plateId);
-  const frame = frameAmount(config, state.frameId);
+  const frame = frameAmount(config, state.frameId, state.plateId);
   const lines = [];
 
   const plateItem = plateById(config, state.plateId);

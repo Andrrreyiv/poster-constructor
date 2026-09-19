@@ -1,3 +1,4 @@
+import { framePriceFor, framesForPlate } from '../src/js/poster/FrameOption.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -57,4 +58,65 @@ test('без рамы габарит равен пластине, сдвига �
 
 test('геометрия отдаёт саму раму — по ней рисуется цвет и волокно', () => {
   assert.equal(frameGeometry(400, 600, makeConfig(), 'wood').frame.grain, true);
+});
+
+
+// ── Цена рамы под конкретную пластину (клиент 19.09) ───────────────────────────
+// Главное правило, которое здесь закрепляется: ПУСТАЯ КЛЕТКА ЗНАЧИТ «РАМЫ НЕТ»,
+// а не «рама бесплатна». Спутать эти два смысла значит подарить раму покупателю.
+
+const сМатрицей = (white, wood) => makeConfig({
+  frames: {
+    enabled: true,
+    widthRatio: 0.05,
+    options: [
+      { id: 'white', label: 'Белая', prices: white },
+      { id: 'wood', label: 'Под дерево', prices: wood },
+    ],
+  },
+});
+
+test('цена рамы берётся по id пластины', () => {
+  const c = сМатрицей({ '10x15': 200, '30x40': 350 }, {});
+  assert.equal(framePriceFor(c, 'white', '10x15'), 200);
+  assert.equal(framePriceFor(c, 'white', '30x40'), 350);
+});
+
+test('незаполненная цена означает, что рамы под этот размер НЕТ', () => {
+  const c = сМатрицей({ '10x15': 200 }, {});
+  assert.equal(framePriceFor(c, 'white', '40x60'), null);
+  assert.equal(framePriceFor(c, 'wood', '10x15'), null);
+});
+
+test('ноль это законная цена: рама бесплатна, но она есть', () => {
+  const c = сМатрицей({ '10x15': 0 }, {});
+  assert.equal(framePriceFor(c, 'white', '10x15'), 0);
+  assert.deepEqual(framesForPlate(c, '10x15').map((f) => f.id), ['white']);
+});
+
+test('мусор и отрицательное в клетке прячут раму, а не обнуляют цену', () => {
+  const c = сМатрицей({ '10x15': 'дорого', '30x40': -100 }, {});
+  assert.equal(framePriceFor(c, 'white', '10x15'), null);
+  assert.equal(framePriceFor(c, 'white', '30x40'), null);
+});
+
+test('без карты цен работает прежняя плоская цена', () => {
+  const c = makeConfig();
+  assert.equal(framePriceFor(c, 'white', '10x15'), 400);
+  assert.equal(framePriceFor(c, 'white', '40x60'), 400);
+});
+
+test('список рам под пластину отдаёт только доступные и с их ценой', () => {
+  const c = сМатрицей({ '10x15': 200, '30x40': 350 }, { '30x40': 900 });
+  assert.deepEqual(framesForPlate(c, '10x15').map((f) => [f.id, f.price]), [['white', 200]]);
+  assert.deepEqual(framesForPlate(c, '30x40').map((f) => [f.id, f.price]), [['white', 350], ['wood', 900]]);
+});
+
+test('под размер без единой цены рам нет вовсе', () => {
+  const c = сМатрицей({ '10x15': 200 }, { '10x15': 500 });
+  assert.deepEqual(framesForPlate(c, '40x60'), []);
+});
+
+test('неизвестная рама цены не имеет', () => {
+  assert.equal(framePriceFor(makeConfig(), 'нет-такой', '10x15'), null);
 });

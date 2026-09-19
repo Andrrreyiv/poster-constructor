@@ -24,7 +24,7 @@ export function applyPosterAdmin(config, admin) {
 
   if (Array.isArray(admin.frames)) {
     const годные = admin.frames.filter(isFrame);
-    if (годные.length) out.frames = { ...out.frames, options: годные.map((f) => ({ ...f })) };
+    if (годные.length) out.frames = { ...out.frames, options: годные.map(cleanFrame) };
   }
 
   // Порог качества приходит одним числом или парой. Мусор оставляет базовые значения:
@@ -84,9 +84,40 @@ function isPlate(p) {
 // У рамы цена может быть нулевой (владелец решит не брать за неё денег), а вот без id
 // и подписи её не показать.
 function isFrame(f) {
-  return !!f && typeof f.id === 'string' && f.id !== ''
-    && typeof f.label === 'string' && f.label !== ''
-    && Number.isFinite(Number(f.price)) && Number(f.price) >= 0;
+  if (!f || typeof f.id !== 'string' || f.id === '') return false;
+  if (typeof f.label !== 'string' || f.label === '') return false;
+  // Цена рамы бывает в двух видах: плоская (до 19.09) и карта «id пластины → цена»
+  // (клиент 19.09: под каждый размер своя цена). Годна рама, у которой есть хотя бы
+  // одно из двух, иначе покупателю нечего показать.
+  const плоская = Number.isFinite(Number(f.price)) && Number(f.price) >= 0;
+  return плоская || priceMapSize(f.prices) > 0;
+}
+
+/** Сколько годных цен в карте «id пластины → цена». Мусор не считается. */
+function priceMapSize(map) {
+  if (!map || typeof map !== 'object' || Array.isArray(map)) return 0;
+  return Object.keys(map).filter((k) => {
+    const v = Number(map[k]);
+    return Number.isFinite(v) && v >= 0;
+  }).length;
+}
+
+/**
+ * Копия рамы с вычищенной картой цен: мусорное значение ВЫБРАСЫВАЕТСЯ, а не приводится
+ * к нулю. Ноль означает «рама бесплатна», пустая клетка — «такой рамы под этот размер
+ * нет в наличии». Путать эти два смысла нельзя: первый подарит раму, второй её спрячет.
+ */
+function cleanFrame(f) {
+  const out = { ...f };
+  if (f.prices && typeof f.prices === 'object' && !Array.isArray(f.prices)) {
+    const prices = {};
+    for (const key of Object.keys(f.prices)) {
+      const v = Number(f.prices[key]);
+      if (Number.isFinite(v) && v >= 0) prices[key] = v;
+    }
+    out.prices = prices;
+  }
+  return out;
 }
 
 function isCategory(c) {

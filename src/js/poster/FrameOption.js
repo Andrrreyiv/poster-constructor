@@ -33,6 +33,47 @@ export function frameById(config, id) {
   return frameList(config).find((f) => f.id === id) ?? null;
 }
 
+/**
+ * Цена рамы ДЛЯ КОНКРЕТНОЙ ПЛАСТИНЫ.
+ *
+ * Клиент 19.09 (голосовое 08:59), дословно: «под каждую пластину рама соответственно
+ * увеличивается и цена у неё другая… если я не проставил под дерево, то в конструкторе
+ * рама под дерево не отображается. Это значит её нету в наличии».
+ *
+ * Отсюда два правила, и второе важнее первого:
+ *   - цена ищется в карте prices по id пластины;
+ *   - ☠️ НЕТ ЦЕНЫ — НЕТ РАМЫ. Пустая клетка это не «бесплатно», а «под этот размер
+ *     такой рамы нет», и рама не показывается покупателю вовсе.
+ *
+ * Пока карты prices нет вообще (базовый конфиг до первого сохранения админки),
+ * работает прежняя плоская цена: иначе конструктор остался бы без рам ровно до того
+ * момента, как владелец заполнит таблицу, а он собирался сделать это «попозже».
+ *
+ * @returns {number|null} null = рамы под этот размер нет
+ */
+export function framePriceFor(config, frameId, plateId) {
+  const frame = frameById(config, frameId);
+  if (!frame) return null;
+
+  if (frame.prices && typeof frame.prices === 'object' && !Array.isArray(frame.prices)) {
+    const v = Number(frame.prices[plateId]);
+    return Number.isFinite(v) && v >= 0 ? v : null;
+  }
+
+  const flat = Number(frame.price);
+  return Number.isFinite(flat) && flat >= 0 ? flat : null;
+}
+
+/**
+ * Рамы, доступные под эту пластину, уже с ценой. Именно этот список видит покупатель.
+ * Пустой список значит, что под выбранный размер рам нет ни одной.
+ */
+export function framesForPlate(config, plateId) {
+  return frameList(config)
+    .map((f) => ({ ...f, price: framePriceFor(config, f.id, plateId) }))
+    .filter((f) => f.price !== null);
+}
+
 // ⛔ Здесь был framePrice(config, id). Удалён 13.09 как ДУБЛЬ: его тело построчно
 // совпадало с frameAmount() из PosterPrice.js, и вызывался только второй. Цена живёт
 // в модуле цены, а этот модуль отвечает за саму раму — её вид, геометрию и текстуру.
